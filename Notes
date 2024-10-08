@@ -1,0 +1,39 @@
+// Yii Commands
+./yiic shell ../index-test.php
+model xxx
+./yiic migrate create <name>
+./yiic migrate
+
+//Basic mysql Commands
+UPDATE company SET membership='2021-02-19 09:29:50' WHERE id=1;
+
+
+// Basic Docker Commands
+docker build -t eltantillo/gddmanager .
+docker push eltantillo/gddmanager
+docker exec -i gddmanager mysql -u root mysql < /var/www/html/gddmanager/protected/data/data.sql
+docker exec -it gddmanager bash
+docker system prune
+docker volume prune
+
+// DB and files Backup
+export FOLDER=$(date +%d-%m-%Y)
+mkdir ~/gddmanager/backup/$FOLDER
+docker exec gddmanager mysqldump -u root --databases gddmanager --add-drop-database > ~/gddmanager/backup/$FOLDER/backup.sql
+docker exec gddmanager tar -czvf files.tar.gz /var/www/html/files
+docker cp gddmanager:files.tar.gz ~/gddmanager/backup/$FOLDER
+docker exec gddmanager rm files.tar.gz
+
+//Rebuild Docker instance
+docker stop gddmanager
+docker rm gddmanager
+docker run --name gddmanager -d -p "8081:80" eltantillo/gddmanager
+docker exec gddmanager sed -i '5d' /var/www/html/index.php
+docker exec gddmanager sed -i '5d' /var/www/html/protected/config/database.php
+
+// Restore DB and files
+docker exec -i gddmanager mysql -u root mysql < ~/gddmanager/backup/$FOLDER/backup.sql
+docker cp ~/gddmanager/backup/$FOLDER/files.tar.gz gddmanager:files.tar.gz
+docker exec gddmanager tar -xzvf files.tar.gz
+docker exec gddmanager rm files.tar.gz
+docker exec -i gddmanager ./var/www/html/protected/yiic migrate
